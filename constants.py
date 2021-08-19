@@ -1,13 +1,15 @@
 import torch
 import os
 import torchvision
+from fire_mask_dataset import DataLoader, IMAGE_DIR, MASK_DIR
 
+# MODEL NAMES
 VANILLA_GAN = "GAN"
 CGAN = "CGAN"
 BASIC_VAE = "VAE"
 CVAE = "CVAE"
 
-
+# NOISE DIMENSIONS
 VANILLA_GAN_Z = (100, 1, 1)
 CGAN_Z = (1, 8, 8)
 CVAE_Z = [100]
@@ -39,3 +41,22 @@ def save_image_batch_separate(output_folder, name,images):
         images_path = os.path.join(output_folder, '{}_{}.jpg'.format(name,i))
         image = images[i]
         torchvision.utils.save_image(image, images_path)
+
+
+
+def create_example_input(batch_size, model_type,device ):
+    if model_type == VANILLA_GAN or model_type == BASIC_VAE:
+        example_input  = create_latent_vector(batch_size,(100,1,1)).to(device)
+        return example_input
+
+    elif model_type == CGAN :
+        z = create_latent_vector(batch_size, CGAN_Z).to(device)
+        im, masks = iter(DataLoader(IMAGE_DIR, MASK_DIR, batch_size, shuffle=False).get_data_loader()).next()
+        masks = masks.to(device)
+        return z, masks
+
+    elif model_type == CVAE:
+        z = create_latent_vector(batch_size, CVAE_Z).to(device)
+        im, masks = iter(DataLoader(IMAGE_DIR, MASK_DIR, batch_size, shuffle=False).get_data_loader()).next()
+        masks = masks.to(device)
+        return z, masks

@@ -1,5 +1,8 @@
 from generator import Generator
+from discriminator import  Discriminator
+
 from conditional_generator import CondGenerator_UNET
+from conditional_discriminator import  CondDiscriminator
 import torch
 from constants import *
 from fire_mask_dataset import DataLoader, IMAGE_DIR, MASK_DIR
@@ -50,10 +53,69 @@ class TestEvalModel:
         t = t2-t1
         print("czas generatora: {}s".format(t))
 
-
+"""
 pth_to_cond_generator = "GAN_16.08_MODELS2/gen38.pth"
 
 TEM = TestEvalModel("cuda","CGAN")
 TEM.load_generator(pth_to_cond_generator)
 TEM.test_generation_time()
 TEM.generate_images(16)
+"""
+
+
+
+
+def get_real_images(batch_size, model_type):
+    if model_type == CVAE or model_type == CGAN:
+        return iter(DataLoader(IMAGE_DIR, MASK_DIR, batch_size, shuffle=False).get_data_loader()).next()
+    else:
+        return iter(DataLoader(IMAGE_DIR, None, batch_size, shuffle=True).get_data_loader()).next()
+
+
+def test_discriminator(model_type, batch_size, generator_path, discriminator_path, device):
+
+
+    if model_type == VANILLA_GAN:
+        generator = Generator().to(device)
+        discriminator = Discriminator().to(device)
+
+    elif model_type == CGAN:
+        generator = CondGenerator_UNET().to(device)
+        discriminator = CondDiscriminator().to(device)
+
+    generator.load_state_dict(torch.load(generator_path))
+    discriminator.load_state_dict(torch.load(discriminator_path))
+
+    real_images = get_real_images(batch_size, model_type)
+
+    if model_type == CGAN:
+        real_images, masks = real_images
+        masks = masks.to(device)
+    real_images = real_images.to(device)
+
+    gen_input = create_example_input(batch_size, model_type, device)
+    fake_images = generator(gen_input)
+
+    real_labels = torch.ones(batch_size, 1, 1, 1).to(device)
+    fake_labels = torch.zeros(batch_size, 1, 1, 1).to(device)
+
+
+
+    error_on_real_samples = get_discriminator_error(discriminator, real_images, real_labels)
+    print("discriminator L1 error on real images {}".format(error_on_real_samples))
+
+    error_on_fake_samples = get_discriminator_error(discriminator, fake_images, fake_labels)
+    print("discriminator L1 error on fake images {}".format(error_on_fake_samples))
+
+
+
+def get_discriminator_error(discriminator, image_sample, labels):
+    loss_criterion = torch.nn.L1Loss()
+    result = discriminator(image_sample)
+    #print(result)
+    loss = loss_criterion(labels, result)
+
+    return loss
+
+
+test_discriminator(VANILLA_GAN, 64,"GAN_16.08_MODELS_vanilla/gen8.pth","GAN_16.08_MODELS_vanilla/dis8.pth","cuda")

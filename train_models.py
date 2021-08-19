@@ -85,6 +85,13 @@ class TrainModels:
     def choose_loss_criterion(self):  # TODO
         self.loss_criterion = torch.nn.BCELoss()
 
+
+    def set_generator_optimizer(self):
+        pass
+
+    def set_discriminator_optimizer(self):
+        pass
+
     def choose_gen_dis_optimizer(self):
         beta1 = 0.5
         self.discriminator_optimizer = torch.optim.Adam(self.model.discriminator.parameters(), lr=0.0001, betas=(beta1, 0.999))  # 1 seria 0.001 2 seria 0.0002
@@ -242,21 +249,7 @@ class TrainModels:
             return self.model.decode(example_input)
 
 
-    def create_example_input(self,batch_size):
-        if self.model_type == VANILLA_GAN or self.model_type == BASIC_VAE:
-            example_input  = create_latent_vector(self.batch_size,(100,1,1)).to(self.device)
-            return example_input
 
-        elif self.model_type == CGAN :
-            z = create_latent_vector(batch_size, self.CGAN_noide_dim).to(self.device)
-            im, masks = iter(DataLoader(IMAGE_DIR, MASK_DIR, batch_size, shuffle=True).get_data_loader()).next()
-            masks = masks.to(self.device)
-            return z, masks
-        elif self.model_type == CVAE:
-            z = create_latent_vector(batch_size, CVAE_Z).to(self.device)
-            im, masks = iter(DataLoader(IMAGE_DIR, MASK_DIR, batch_size, shuffle=True).get_data_loader()).next()
-            masks = masks.to(self.device)
-            return z, masks
 
 
 
@@ -266,7 +259,7 @@ class TrainModels:
 
         self.real_labels = torch.ones(self.batch_size, 1, 1, 1).to(self.device)
         self.fake_labels = torch.zeros(self.batch_size, 1, 1, 1).to(self.device)
-        example_input = self.create_example_input(64)
+        example_input = create_example_input(16)
 
 
         for epoch in range(epochs):
