@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from constants import  *
 
 from generator import Generator
 from discriminator import Discriminator
@@ -21,6 +22,9 @@ class GAN:
 
         self.discriminator_optimizer = None
         self.generator_optimizer = None
+        self.loss_criterion = None
+
+
 
 
     def choose_generator(self, conditional_GAN):
@@ -41,19 +45,20 @@ class GAN:
     def get_discriminator(self):
         return self.discriminator
 
-    def pass_through_network(self, input):
-        fake_image = self.generator(input)
-        fake_output = self.discriminator(fake_image)
-        return (fake_image, fake_output)
+
+
+    def set_generator_optimizer(self, generator_optimizer):
+        self.generator_optimizer = generator_optimizer
+
+    def set_discriminator_optimizer(self, discriminator_optimizer):
+        self.discriminator_optimizer = discriminator_optimizer
+
+    def set_loss_criterion(self, loss_critertion):
+        self.loss_criterion = loss_critertion
 
 
 
-
-
-    def set_gen_dis_optimizer(self):
-        beta1 = 0.5
-
-    def save_models(self, generator_path, discriminator_path):
+    def save_model(self, generator_path, discriminator_path):
         torch.save(self.generator.state_dict(), generator_path)
         torch.save(self.discriminator.state_dict(), discriminator_path)
 
@@ -62,5 +67,39 @@ class GAN:
 
     def load_generator(self, generator_path):
         self.generator.load_state_dict(torch.load(generator_path))
+
+    def train(self, data):
+
+        self.discriminator_optimizer.zero_grad()
+
+
+        real_images = data.to(self.device)
+        batch_size = real_images.shape[0]
+        input = create_latent_vector(batch_size, VANILLA_GAN_Z).to(self.device)
+
+        fake_images = self.generator(input)
+        fake_outputs = self.discriminator(fake_images)
+        real_outputs = self.discriminator(real_images)
+
+        real_labels, fake_labels = create_labels(batch_size, self.device)
+        dis_loss1 = self.loss_criterion(real_outputs, real_labels)
+        dis_loss2 = self.loss_criterion(fake_outputs, fake_labels)
+
+        dis_loss2 += dis_loss1
+        dis_loss2.backward()
+
+        self.discriminator_optimizer.step()
+
+        self.generator_optimizer.zero_grad()
+
+        input = create_latent_vector(batch_size, VANILLA_GAN_Z).to(self.device)
+        fake_images = self.generator(input)
+        fake_outputs = self.discriminator(fake_images)
+
+        loss = self.loss_criterion(fake_outputs, real_labels)
+        loss.backward()
+        self.generator_optimizer.step()
+
+        return loss.item(), dis_loss2.item()
 
 

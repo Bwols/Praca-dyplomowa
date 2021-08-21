@@ -35,5 +35,6 @@ class CondDiscriminator(nn.Module):
         )
 
     def forward(self, image,mask):
+
         x = add_image_mask(image,mask)
         return self.main(x)

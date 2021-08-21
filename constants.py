@@ -3,19 +3,51 @@ import os
 import torchvision
 from fire_mask_dataset import DataLoader, IMAGE_DIR, MASK_DIR
 
+
 # MODEL NAMES
 VANILLA_GAN = "GAN"
 CGAN = "CGAN"
 BASIC_VAE = "VAE"
 CVAE = "CVAE"
 
+
 # NOISE DIMENSIONS
 VANILLA_GAN_Z = (100, 1, 1)
 CGAN_Z = (1, 8, 8)
 CVAE_Z = [100]
 
+
+#LOSS FUNCTIONS
+L1 = "L1"
+MSE = "MSE"
+NEGATIVE_LOG_LIKELIHOOD = "NLL"
+CROSS_ENTROPY_LOSS = "CrossEntropyLoss"
+KLD = "KLD"
+BCE = "BCE"
+HINGE_EMBEDDING_LOSS = "HingeEmbeddingLoss"
+
+
+#OPTIMIZERS
+SGD = "SGD"
+ADAM = "ADAM"
+ADAMW = "ADAMW"
+
+
+#NETS
+GENERATOR = "generator"
+DISCRIMINATOR = "discriminator"
+VAE = "VAE"
+
+
 NC = 3 # number of channels on models input associated with image BGR channels
 
+
+
+
+def create_labels(batch_size, device):
+    real_labels = torch.ones(batch_size, 1, 1, 1).to(device)
+    fake_labels = torch.zeros(batch_size, 1, 1, 1).to(device)
+    return real_labels, fake_labels
 
 def create_latent_vector(batch_size, latant_dim):  # number tuple
     return torch.randn(batch_size,*latant_dim)

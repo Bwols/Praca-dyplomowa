@@ -31,7 +31,7 @@ class FireMaskDataset(Dataset):
             print("No mask dataset")
 
         else:
-            print("white_mask_dataset")
+            print("White_mask_dataset")
 
         for image_name in os.listdir(image_dir):
             image_path = get_full_path(image_dir, image_name)
@@ -49,7 +49,7 @@ class FireMaskDataset(Dataset):
 
 
         self.len = len(self.images)
-        print("wczytano {} obrazów".format(self.len))
+        print("Loaded {} images of fire \n".format(self.len))
 
     def __len__(self):
         return self.len

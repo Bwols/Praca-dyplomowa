@@ -15,13 +15,19 @@ def draw_gen_dis_plot(gen_loss_v, dis_loss_v, title, output_plot_path = None):
     plt.plot(epochs, dis_loss_v, label="Błąd dyskryminatora")
 
     plt.xlabel('Epoka')
-    plt.ylabel('Błąd MSE')
+    plt.ylabel('Suma błędów epoki')
     plt.title(title)
-
+    plt.legend()
     if output_plot_path != None:
         plt.savefig(output_plot_path)
-    plt.show()
+    else:
+        plt.show()
+
+    plt.clf()
+
+def save_model_loss_data(loss_vector, file_output_path):
+    with open(file_output_path,'w') as file:
+        file.write(' '.join(str(el)for el in loss_vector)+ '\n')  # el epoch loss
 
 
 
-draw_gen_dis_plot(gen,dis,"Błędy generatora i dyskryminaotra przy uczeniu\n optymalizatorem ADAM i funckcją strany BCE")
