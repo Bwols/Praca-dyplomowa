@@ -36,7 +36,7 @@ ADAMW = "ADAMW"
 #NETS
 GENERATOR = "generator"
 DISCRIMINATOR = "discriminator"
-VAE = "VAE"
+VAE_NET = "VAE"
 
 
 NC = 3 # number of channels on models input associated with image BGR channels

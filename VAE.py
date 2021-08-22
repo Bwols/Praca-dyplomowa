@@ -3,74 +3,72 @@ import torch.nn as nn
 from constants import NC
 from torch import exp, rand_like, sum
 
+from cond_vae import CondVAEEncoderDecoder
+from basic_vae import VAEEncoderDecoder
 
 
-class VAE(nn.Module):# one convolutional layer one fully_connected
 
-    def __init__(self):
-        super(VAE,self).__init__()
+class VAE:
+    def __init__(self, device, conditionalVAE = False):
+        self.device = device
+        self.conditionalVAE = conditionalVAE
 
-        self.encoder = nn.Sequential(
-            nn.Conv2d(NC, 32, 3, 2, 1, bias=False),
-            nn.BatchNorm2d(32),
-            nn.LeakyReLU(0.2, inplace=True),
+        self.optimizer = None
+        self.loss_criterion = None
 
-            nn.Conv2d(32, 1, 3, 2, 1, bias=False),
-            nn.BatchNorm2d(1),
-            nn.LeakyReLU(0.2, inplace=True),
-        )
+        self.choose_encoder_decoder()
 
-        self.fc_log_var = nn.Linear(256,100)
-        self.fc_mu = nn.Linear(256,100)
+    def choose_encoder_decoder(self):
+        if self.conditionalVAE:
 
-        self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(100, 64, 6, 2, 1, bias=False),
-            nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.ConvTranspose2d(64, 32, 4, 3, 1, bias=False),
-            nn.BatchNorm2d(32),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.ConvTranspose2d(32, 16, 4, 3, 1, bias=False),
-            nn.BatchNorm2d(16),
-            nn.LeakyReLU(0.2, inplace=True),
+            self.encoder_decoder = CondVAEEncoderDecoder().to(self.device)
+        else:
+            self.encoder_decoder = VAEEncoderDecoder().to(self.device)
 
-            nn.ConvTranspose2d(16, 3, 4, 2, 1, bias=False),
-            nn.BatchNorm2d(3),
-            nn.Sigmoid()
+    def set_model_optimizer(self, optimizer):
+        self.optimizer = optimizer
+
+    def set_loss_criterion(self, loss_criterion):
+        self.loss_criterion = loss_criterion
+
+    def get_parameters(self):
+        return self.encoder_decoder.parameters()
+
+    def generate(self, data):
+        return self.encoder_decoder.decode(data)
 
 
-        )
-
-    def encode(self,image):
-
-        encoded = self.encoder(image)
-
-        #encoded = torch.flatten(encoded)
-        encoded = encoded.view(-1,256)
-
-        mu = self.fc_mu(encoded)
-        log_var = self.fc_log_var(encoded)
-        return (mu,log_var)
-
-    def decode(self,z):
-        z = z.view(-1, 100, 1, 1)
-        decoded = self.decoder(z)
-        return decoded
-
-    def get_latent_vector(self,mu,log_var):#reparametrization trick
-        std = exp(0.5*log_var)
-        eps = rand_like(std)
-        return eps *std + mu
-
-    def final_loss(self,reconstruction_loss,mu,log_var):
-
-        KLD = -0.5 * sum(1 + log_var - mu ** 2 - log_var.exp())
-
-        return reconstruction_loss + KLD
+    def train(self, data):
+        if self.conditionalVAE:
+            return self.train_conditional(data)
+        else:
+            return self.train_basic(data)
 
 
-    def forward(self,image):
-        mu,log_var = self.encode(image)
-        z = self.get_latent_vector(mu,log_var)
-        fake_image = self.decode(z)
-        return fake_image,mu,log_var
+    def train_basic(self, data):
+        self.optimizer.zero_grad()
+        real_images = data.to(self.device)
+        fake_images, mu, log_var = self.encoder_decoder(real_images)
+        reconstruction_loss = self.loss_criterion(fake_images, real_images)
+        loss = self.encoder_decoder.final_loss(reconstruction_loss, mu, log_var)
+
+        loss.backward()
+
+        self.optimizer.step()
+
+        return loss
+
+
+    def train_conditional(self, data):
+        self.optimizer.zero_grad()
+        real_images, real_masks = data
+        real_images = real_images.to(self.device)
+        real_masks = real_masks.to(self.device)
+        fake_images, mu, log_var = self.encoder_decoder(real_images, real_masks)
+        reconstruction_loss = self.loss_criterion(fake_images, real_images)
+        loss = self.encoder_decoder.final_loss(reconstruction_loss, mu, log_var)
+        loss.backward()
+
+        self.optimizer.step()
+
+        return loss

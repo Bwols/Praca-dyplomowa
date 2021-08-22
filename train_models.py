@@ -1,6 +1,6 @@
 from generative_adversarial_nets import GAN
 from VAE import VAE
-from cond_vae import CondVAE
+#from cond_vae import CondVAE
 
 import visualize_results as vis_rez
 from fire_mask_dataset import DataLoader, IMAGE_DIR, MASK_DIR
@@ -39,6 +39,7 @@ class TrainModels:
         self.device = device  # set to use cpu or cuda
         self.model_type = model_type
 
+        self.options_set = {}
 
         self.output_dir = output_dir
         self.model_dir = "{}/models".format(output_dir)
@@ -61,10 +62,10 @@ class TrainModels:
         self.discriminator_optimizer = None
         self.vae_optimizer = None
 
-        self.choose_optimizer()
 
 
-        self.CGAN_noide_dim = (1, 8, 8)
+
+
 
 
     def load_train_loader(self):
@@ -77,15 +78,15 @@ class TrainModels:
     def load_model(self):
 
         if self.model_type == VANILLA_GAN:
-            self.model =  GAN(device=self.device,conditonal_GAN=False)
+            self.model = GAN(device=self.device, conditonal_GAN=False)
         elif self.model_type == CGAN:
-            self.model = GAN(device=self.device,conditonal_GAN=True)
+            self.model = GAN(device=self.device, conditonal_GAN=True)
 
         elif self.model_type == BASIC_VAE:
-            self.model = VAE().to(self.device)
+            self.model = VAE(device=self.device, conditionalVAE=False)
 
         elif self.model_type == CVAE:
-            self.model = CondVAE().to(self.device)
+            self.model = VAE(device=self.device, conditionalVAE=True)
 
     def set_loss_criterion(self, loss_function_name):
 
@@ -110,39 +111,47 @@ class TrainModels:
 
 
     def set_batch_size(self, batch_size):
+        self.batch_size = batch_size
         pass
 
-    def set_net_optimizer(self, net_name, optimizer_name, lr ,momentum):
+    def set_net_optimizer(self, net_name, optimizer_name, lr ,momentum): #momentum is beta for adam and admaw
         parameters = None
+        optimizer = None
+
         if net_name == GENERATOR:
             parameters = self.model.generator.parameters()
         elif net_name == DISCRIMINATOR:
             parameters = self.model.discriminator.parameters()
-        elif net_name == VAE:
-            parameters = self.model.parameters()
+        elif net_name == VAE_NET:
+            parameters = self.model.encoder_decoder.parameters()
+
 
 
         if optimizer_name == ADAM:
-            pass
+            optimizer = torch.optim.Adam(parameters, lr=lr, betas=(momentum, 0.999))
+
+        elif optimizer_name == ADAMW:
+            optimizer = torch.optim.AdamW(parameters, lr=lr, betas=(momentum, 0.999))
+
+        elif optimizer_name == SGD:
+            optimizer = torch.optim.SGD(parameters, lr=lr, momentum=momentum)
+
+        if net_name == GENERATOR:
+            self.generator_optimizer = optimizer
+            self.model.set_generator_optimizer(optimizer)
+        elif net_name == DISCRIMINATOR:
+            self.discriminator_optimizer = optimizer
+            self.model.set_discriminator_optimizer(optimizer)
+        elif net_name == VAE_NET:
+            self.vae_optimizer = optimizer
+            self.model.set_model_optimizer(optimizer)
 
 
 
-    def choose_gen_dis_optimizer(self):
-        beta1 = 0.5
-        self.discriminator_optimizer = torch.optim.Adam(self.model.discriminator.parameters(), lr=0.0002, betas=(beta1, 0.999))  # 1 seria 0.001 2 seria 0.0002
-        self.generator_optimizer = torch.optim.Adam(self.model.generator.parameters(), lr=0.0002, betas=(beta1, 0.999))
 
-        self.model.set_discriminator_optimizer(self.discriminator_optimizer)
-        self.model.set_generator_optimizer(self.generator_optimizer)
 
-    def choose_vae_optimizer(self):
-        self.vae_optimizer = torch.optim.Adam(self.model.parameters(), lr=0.001)
 
-    def choose_optimizer(self):
-        if self.model_type == VANILLA_GAN or self.model_type == CGAN:
-            self.choose_gen_dis_optimizer()
-        else:
-            self.choose_vae_optimizer()
+
 
 
 
@@ -156,96 +165,16 @@ class TrainModels:
         if self.model_type == VANILLA_GAN or self.model_type == CGAN:
             generator_path = "{}/gen{}.pth".format(self.model_dir, epoch)
             discriminator_path = "{}/dis{}.pth".format(self.model_dir, epoch)
-            self.model.save_model(generator_path=generator_path, discriminator_path= discriminator_path)
+            self.model.save_model(generator_path=generator_path, discriminator_path=discriminator_path)
         else:
             vae_path = "{}/vae{}.pth".format(self.model_dir, epoch)
-            torch.save(self.model.state_dict(), vae_path)
+            torch.save(self.model.encoder_decoder.state_dict(), vae_path)
 
 
 
 
     def train_model(self, data):
-
-        if self.model_type == CGAN:
-            return self.train_CGAN(data)
-
-        elif self.model_type == VANILLA_GAN:
-            return self.model.train(data)
-
-        elif self.model_type == BASIC_VAE:
-            return self.train_VAE(data)
-
-        elif self.model_type == CVAE:
-            return self.train_CVAE(data)
-
-    def train_VANILLA_GAN(self, data):
-
-        self.discriminator_optimizer.zero_grad()
-
-        real_images = data.to(self.device)
-        input = create_latent_vector(self.batch_size, VANILLA_GAN_Z).to(self.device)
-        fake_images = self.model.generator(input)
-        fake_outputs = self.model.discriminator(fake_images)
-        real_outputs = self.model.discriminator(real_images)
-
-        dis_loss1 = self.loss_criterion(real_outputs, self.real_labels)
-        dis_loss2 = self.loss_criterion(fake_outputs, self.fake_labels)
-
-        dis_loss2 += dis_loss1
-        dis_loss2.backward()
-
-        self.discriminator_optimizer.step()
-
-        self.generator_optimizer.zero_grad()
-
-        input = create_latent_vector(self.batch_size, VANILLA_GAN_Z).to(self.device)
-        fake_images = self.model.generator(input)
-        fake_outputs = self.model.discriminator(fake_images)
-
-        loss = self.loss_criterion(fake_outputs, self.real_labels)
-        loss.backward()
-        self.generator_optimizer.step()
-
-        return loss.item(), dis_loss2.item()
-
-    def train_CGAN(self,data):
-
-        real_images, masks = data
-        real_images = real_images.to(self.device)
-        masks = masks.to(self.device)
-        z = create_latent_vector(self.batch_size,(1, 8, 8)).to(self.device)
-        fake_images = self.model.generator(z, masks)
-
-        self.discriminator_optimizer.zero_grad()
-
-
-        real_outputs = self.model.discriminator(real_images, masks)
-
-        fake_outputs = self.model.discriminator(fake_images, masks)
-
-        d_x = self.loss_criterion(real_outputs, self.real_labels)
-        d_g_z = self.loss_criterion(fake_outputs, self.fake_labels)
-
-        d_x.backward()
-        d_g_z.backward()
-
-        self.discriminator_optimizer.step()
-
-        self.generator_optimizer.zero_grad()
-
-        z = create_latent_vector(self.batch_size, self. CGAN_noide_dim).to(self.device)
-
-        fake_images = self.model.generator(z, masks)
-        outputs = self.model.discriminator(real_images, masks)
-
-        loss = self.loss_criterion(outputs,self.real_labels)
-        loss.backward()
-        self.generator_optimizer.step()
-
-
-
-
-        return loss.item(), d_x.item()+ d_g_z.item()
+        return self.model.train(data)
 
 
     def train_VAE(self, data):
@@ -258,7 +187,7 @@ class TrainModels:
 
         self.vae_optimizer.step()
 
-        return loss,1
+        return loss
 
 
     def train_CVAE(self,data):
@@ -273,7 +202,7 @@ class TrainModels:
 
         self.vae_optimizer.step()
 
-        return loss,1
+        return loss
 
 
 
@@ -283,7 +212,7 @@ class TrainModels:
         elif self.model_type == CGAN:
             return self.model.generator(*example_input)
         else:
-            return self.model.decode(example_input)
+            return self.model.generate(example_input)
 
 
 
@@ -298,9 +227,11 @@ class TrainModels:
 
             self.gen_loss_v = []
             self.dis_loss_v = []
+            self.vae_loss_v = []
 
             self.gen_epoch_loss = 0
             self.dis_epoch_loss = 0
+            self.vae_epoch_loss = 0
 
             self.start_t = 0
 
@@ -315,6 +246,7 @@ class TrainModels:
         def reset_epoch_loss(self):
             self.gen_epoch_loss = 0
             self.dis_epoch_loss = 0
+            self.vae_epoch_loss = 0
 
 
         def add_batch_loss(self, model_batch_loss):
@@ -324,6 +256,8 @@ class TrainModels:
                 self.gen_epoch_loss += gen_batch_loss
                 self.dis_epoch_loss += dis_batch_loss
 
+            else:
+                self.vae_epoch_loss += model_batch_loss
 
         def append_epoch_loss(self):
 
@@ -333,6 +267,11 @@ class TrainModels:
 
                 print("     Generator epoch loss: {}".format(self.gen_epoch_loss))
                 print("     Discriminator epoch loss: {}".format(self.dis_epoch_loss))
+
+
+            elif self.model_type == BASIC_VAE or self.model_type == CVAE:
+                self.vae_loss_v.append(self.vae_epoch_loss)
+                print("     VAE epoch loss: {}".format(self.vae_epoch_loss))
 
 
         def save_plot(self):
@@ -347,6 +286,16 @@ class TrainModels:
 
                 dis_file_path = "{}/dis_loss.txt".format(self.plot_dir)
                 vis_rez.save_model_loss_data(self.dis_loss_v, dis_file_path)
+
+            elif self.model_type == BASIC_VAE or self.model_type == CVAE:
+                title = "Błąd autoenkodera wariacyjnego w procesie nauki"
+                plot_path = "{}/vae_loss.png".format(self.plot_dir)
+
+                vis_rez.draw_vae_loss_plot(self.vae_loss_v, title, plot_path)
+
+                gen_file_path = "{}/gen_loss.txt".format(self.plot_dir)
+                vis_rez.save_model_loss_data(self.vae_loss_v, gen_file_path)
+
 
     def train_loop(self, epochs):
 
@@ -367,6 +316,7 @@ class TrainModels:
             epoch_start = time.time()
             for i, data in enumerate(self.train_loader):
                 model_batch_loss = self.train_model(data)
+
                 measure_log_train.add_batch_loss(model_batch_loss)
 
             epoch_end = time.time()
