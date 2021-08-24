@@ -12,13 +12,13 @@ possible models
 testy zrobione na ADAMW to tak naprawdę ADAM
 """
 def train_GAN():
-    ta = TrainModels(device,"GAN_22.08_SGD", model_type="CGAN")
+    ta = TrainModels(device,"CGAN_23.08_BCE_ADAMW_beta", model_type="CGAN")
     ta.set_loss_criterion("BCE")
     ta.set_batch_size(16)
-    ta.set_net_optimizer("generator",SGD, lr=0.002, momentum=0.9)
-    ta.set_net_optimizer("discriminator",SGD, lr=0.002, momentum=0.9)
+    ta.set_net_optimizer("generator",ADAMW, lr=0.01, momentum=0.5)
+    ta.set_net_optimizer("discriminator",ADAMW, lr=0.01, momentum=0.5)
 
-    ta.train_loop(500)
+    ta.train_loop(100)
 
 train_GAN()
 
@@ -29,7 +29,7 @@ ta.set_batch_size(16)
 ta.set_net_optimizer("VAE", ADAMW, lr=0.01, momentum=0.5)
 
 
-ta.train_loop(100)
+#ta.train_loop(100)
 
 
 

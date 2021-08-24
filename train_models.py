@@ -177,34 +177,6 @@ class TrainModels:
         return self.model.train(data)
 
 
-    def train_VAE(self, data):
-        self.vae_optimizer.zero_grad()
-        real_images = data.to(self.device)
-        fake_images, mu, log_var = self.model(real_images)
-        reconstruction_loss = self.loss_criterion(fake_images, real_images)
-        loss = self.model.final_loss(reconstruction_loss, mu, log_var)
-        loss.backward()
-
-        self.vae_optimizer.step()
-
-        return loss
-
-
-    def train_CVAE(self,data):
-        self.vae_optimizer.zero_grad()
-        real_images, real_masks = data
-        real_images = real_images.to(self.device)
-        real_masks = real_masks.to(self.device)
-        fake_images, mu, log_var = self.model(real_images, real_masks)
-        reconstruction_loss = self.loss_criterion(fake_images, real_images)
-        loss = self.model.final_loss(reconstruction_loss, mu, log_var)
-        loss.backward()
-
-        self.vae_optimizer.step()
-
-        return loss
-
-
 
     def generate_fake_images(self, example_input):
         if self.model_type == VANILLA_GAN:

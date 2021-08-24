@@ -22,9 +22,13 @@ class FireMaskDataset(Dataset):
 
         transform = transforms.Compose(
             [transforms.ToTensor(),
-             transforms.Normalize((0.5,), (0.5,)) #
+             transforms.Normalize((0.5,), (0.5,)) # zakres -1,1
              ])
 
+        transform = transforms.Compose(
+            [transforms.ToTensor(),
+             transforms.Normalize((0,), (1,))  # zakres 0, 1
+             ])
 
         if mask_dir == None:
             self.add_mask = False
@@ -38,13 +42,18 @@ class FireMaskDataset(Dataset):
             image = cv.imread(image_path)
             image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
             image = transform(image)
+
+
             self.images.append(image)
 
             if self.add_mask:
                 mask_path = get_full_path(mask_dir, image_name)
                 mask = cv.imread(mask_path)
-                mask = cv.cvtColor(mask,cv.cv2.COLOR_BGR2GRAY)
+
+                mask = cv.cvtColor(mask, cv.cv2.COLOR_BGR2GRAY)
+
                 mask = transform(mask)
+
                 self.masks.append(mask)
 
 

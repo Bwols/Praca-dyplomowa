@@ -112,7 +112,7 @@ def test_discriminator(model_type, batch_size, generator_path, discriminator_pat
 def get_discriminator_error(discriminator, image_sample, labels):
     loss_criterion = torch.nn.L1Loss()
     result = discriminator(image_sample)
-    #print(result)
+    #
     loss = loss_criterion(labels, result)
 
     return loss

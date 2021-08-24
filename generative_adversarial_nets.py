@@ -31,12 +31,14 @@ class GAN:
     def choose_generator(self):
         if self.conditional_GAN:
             self.generator = CondGenerator_UNET().to(self.device)
+
         else:
             self.generator = Generator().to(self.device)
 
     def choose_discrminator(self):
         if self.conditional_GAN:
             self.discriminator = CondDiscriminator().to(self.device)
+            self.discriminator = Discriminator().to(self.device)  # TODO tutaj usuanc
         else:
             self.discriminator = Discriminator().to(self.device)
 
@@ -73,6 +75,7 @@ class GAN:
         if not self.conditional_GAN:
             return  self.train_vanilla(data)
         else:
+            return self.train_conditional_beta(data) # TODO tu też usunąć
             return self.train_conditional(data)
 
 
@@ -139,7 +142,7 @@ class GAN:
         z = create_latent_vector(batch_size, CGAN_Z).to(self.device)
 
         fake_images = self.generator(z, masks)
-        outputs = self.discriminator(real_images, masks)
+        outputs = self.discriminator(fake_images, masks)
 
         loss = self.loss_criterion(outputs, real_labels)
         loss.backward()
@@ -147,6 +150,47 @@ class GAN:
 
         return loss.item(), d_x.item() + d_g_z.item()
 
+
+
+    def train_conditional_beta(self, data):
+        mask_loss_criterion = torch.nn.MSELoss()
+        real_images, masks = data
+        batch_size = real_images.shape[0]
+        real_images = real_images.to(self.device)
+        masks = masks.to(self.device)
+
+        z = create_latent_vector(batch_size, CGAN_Z).to(self.device)
+        fake_images = self.generator(z, masks)
+
+        self.discriminator_optimizer.zero_grad()
+
+        real_outputs = self.discriminator(real_images)
+
+        fake_outputs = self.discriminator(fake_images)
+
+        real_labels, fake_labels = create_labels(batch_size, self.device)
+        d_x = self.loss_criterion(real_outputs, real_labels)
+        d_g_z = self.loss_criterion(fake_outputs, fake_labels)
+
+        d_x.backward()
+        d_g_z.backward()
+
+        self.discriminator_optimizer.step()
+
+        self.generator_optimizer.zero_grad()
+
+        fake_images = self.generator(z, masks)
+        outputs = self.discriminator(fake_images)
+
+        fake_masks = create_white_mask_tensor(fake_images)
+        fake_masks = fake_masks.to(self.device)
+
+        mask_loss = mask_loss_criterion(fake_masks, masks)
+        loss = self.loss_criterion(outputs, real_labels) + mask_loss
+        loss.backward()
+        self.generator_optimizer.step()
+
+        return loss.item(), d_x.item() + d_g_z.item()
 
 
 

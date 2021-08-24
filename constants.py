@@ -2,7 +2,7 @@ import torch
 import os
 import torchvision
 from fire_mask_dataset import DataLoader, IMAGE_DIR, MASK_DIR
-
+import numpy as np
 
 # MODEL NAMES
 VANILLA_GAN = "GAN"
@@ -63,6 +63,12 @@ def save_image_batch(output_folder,name,images):
     images_path = os.path.join(output_folder,'{}.jpg'.format(name))
     torchvision.utils.save_image(images,images_path,nrow=4,padding=0,pad_value=0)
 
+def save_masks(output_folder,name,images):
+    images = images.view(-1, 1, 64, 64)
+    make_dir(output_folder)
+    images_path = os.path.join(output_folder, '{}.jpg'.format(name))
+    torchvision.utils.save_image(images, images_path, nrow=4, padding=0, pad_value=0)
+
 
 def save_image_batch_separate(output_folder, name,images):
     images = images.view(-1, 3, 64, 64)
@@ -92,3 +98,16 @@ def create_example_input(batch_size, model_type,device ):
         im, masks = iter(DataLoader(IMAGE_DIR, MASK_DIR, batch_size, shuffle=False).get_data_loader()).next()
         masks = masks.to(device)
         return z, masks
+
+
+def create_white_mask_tensor(image):
+    image = image.detach().cpu()
+    image = np.array(image)
+    image = np.transpose(image, (0, 2, 3, 1))
+
+    white_mask = np.where(((image[:, :, :, 0] <= 0) & (image[:, :, :, 1] <= 0) & (image[:, :, :, 2] <= 0)), 0, 1)
+
+    white_mask = torch.tensor(white_mask)
+    white_mask = white_mask.reshape(-1, 1, 64, 64)
+
+    return white_mask
