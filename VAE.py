@@ -6,6 +6,7 @@ from torch import exp, rand_like, sum
 from cond_vae import CondVAEEncoderDecoder
 from basic_vae import VAEEncoderDecoder
 
+import torch
 
 
 class VAE:
@@ -16,6 +17,7 @@ class VAE:
         self.optimizer = None
         self.loss_criterion = None
 
+        self.encoder_decoder = None
         self.choose_encoder_decoder()
 
     def choose_encoder_decoder(self):
@@ -37,12 +39,20 @@ class VAE:
     def generate(self, data):
         return self.encoder_decoder.decode(data)
 
+    def encode_decode(self, data):
+        if self.conditionalVAE :
+            return self.encoder_decoder.forward(*data)
+        else:
+            return self.encoder_decoder.forward(data)
 
     def train(self, data):
         if self.conditionalVAE:
             return self.train_conditional(data)
         else:
             return self.train_basic(data)
+
+    def load_encoder_decoder(self, encoder_decoder_path):
+        self.encoder_decoder.load_state_dict(torch.load(encoder_decoder_path))
 
 
     def train_basic(self, data):

@@ -49,7 +49,7 @@ class TrainModels:
         self.batch_size = 16
 
         self.train_loader = None
-        self.load_train_loader()
+        #self.load_train_loader() moved to train loop
 
         self.model = None
         self.load_model()
@@ -102,7 +102,8 @@ class TrainModels:
         elif loss_function_name == KLD:
             self.loss_criterion = torch.nn.KLDivLoss()
         elif loss_function_name == BCE:
-            self.loss_criterion = torch.nn.BCELoss()
+            self.loss_criterion = torch.nn.BCELoss(reduction='sum') # TODO
+            #self.loss_criterion = torch.nn.BCELoss()  # TODO
         elif loss_function_name == HINGE_EMBEDDING_LOSS:
             self.loss_criterion = torch.nn.HingeEmbeddingLoss()
 
@@ -112,7 +113,7 @@ class TrainModels:
 
     def set_batch_size(self, batch_size):
         self.batch_size = batch_size
-        pass
+
 
     def set_net_optimizer(self, net_name, optimizer_name, lr ,momentum): #momentum is beta for adam and admaw
         parameters = None
@@ -229,7 +230,7 @@ class TrainModels:
                 self.dis_epoch_loss += dis_batch_loss
 
             else:
-                self.vae_epoch_loss += model_batch_loss
+                self.vae_epoch_loss += model_batch_loss.cpu().detach()
 
         def append_epoch_loss(self):
 
@@ -268,15 +269,30 @@ class TrainModels:
                 gen_file_path = "{}/gen_loss.txt".format(self.plot_dir)
                 vis_rez.save_model_loss_data(self.vae_loss_v, gen_file_path)
 
+    def create_example_training_images(self,example_input, epoch, img_data = None):
+        example_fake_images = self.generate_fake_images(example_input)  # trzeba zmienić argumenty w GANIE
+        save_image_batch(self.visuals_dir, "{}".format(epoch), example_fake_images)
+
+        if self.model_type == BASIC_VAE:
+            example_forward_imgs,_,_ = self.model.encode_decode(img_data.to(self.device))
+            save_image_batch(self.visuals_dir, "{}e_d".format(epoch), example_forward_imgs)
+        elif self.model_type == CVAE:
+            img, mask = img_data
+
+            img_data = img.to(self.device), mask.to(self.device)
+            example_forward_imgs, _, _ = self.model.encode_decode(img_data)
+            save_image_batch(self.visuals_dir, "{}e_d".format(epoch), example_forward_imgs)
+
 
     def train_loop(self, epochs):
-
+        self.load_train_loader()
         measure_log_train = self.MeasureLogTraining(self.model_type, self.output_dir)
         measure_log_train.start_timer()
 
         self.real_labels = torch.ones(self.batch_size, 1, 1, 1).to(self.device)
         self.fake_labels = torch.zeros(self.batch_size, 1, 1, 1).to(self.device)
-        example_input = create_example_input(16, self.model_type, self.device)
+        example_input = create_example_input(64, self.model_type, self.device)
+
 
 
         for epoch in range(epochs):
@@ -284,21 +300,20 @@ class TrainModels:
 
             measure_log_train.reset_epoch_loss()
 
-
+            img_data = None
             epoch_start = time.time()
             for i, data in enumerate(self.train_loader):
-                model_batch_loss = self.train_model(data)
+                model_batch_loss = self.train_model(data) #TODO wziąc to do środak klasy żeby dla gana też działało
 
                 measure_log_train.add_batch_loss(model_batch_loss)
-
+                img_data = data
             epoch_end = time.time()
 
             measure_log_train.append_epoch_loss()
             measure_log_train.save_plot()
 
+            self.create_example_training_images(example_input,epoch,img_data)
 
-            example_fake_images = self.generate_fake_images(example_input)# trzeba zmienić argumenty w GANIE
-            save_image_batch(self.visuals_dir,"{}".format(epoch),example_fake_images)
             self.save_model(epoch)
 
             print("     Epoch time: {} s".format(epoch_end-epoch_start))

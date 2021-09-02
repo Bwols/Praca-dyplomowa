@@ -24,6 +24,7 @@ def draw_gen_dis_plot(gen_loss_v, dis_loss_v, title, output_plot_path = None):
         plt.show()
 
     plt.clf()
+    plt.close(fig)
 
 
 def draw_vae_loss_plot(vae_loss_v, title, output_plot_path = None):
@@ -45,6 +46,7 @@ def draw_vae_loss_plot(vae_loss_v, title, output_plot_path = None):
         plt.show()
 
     plt.clf()
+    plt.close(fig)
 
 
 def save_model_loss_data(loss_vector, file_output_path):

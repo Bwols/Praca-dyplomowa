@@ -1,5 +1,5 @@
 from generative_adversarial_nets import GAN
-
+from VAE import VAE
 from constants import create_example_input, save_image_batch , CGAN_Z, create_latent_vector
 from fire_mask_dataset import DataLoader
 import numpy as np
@@ -107,7 +107,7 @@ def create_random_triangle_mask():
 
     pts = np.array(get_position_array())
     image = np.zeros((64, 64))
-    cv2.fillPoly(image, pts=[pts], color=255)
+    cv2.fillPoly(image, pts=[pts], color=1)
 
     #cv2.imshow("filledPolygon", image)
     #cv2.waitKey(0)  # waits until a key is pressed
@@ -150,10 +150,73 @@ def test_conditional_gan(generator_path, batch_size):
 
 
 
+def test_vae(vae_path, batch_size):
+
+    def get_latent_vector( mu ,log_var):#reparametrization trick
+        std = torch.exp(0.5*log_var)
+        eps = torch.rand_like(std)
+        return eps *std + mu
+
+    device = "cuda"
+    dl = DataLoader("FD_READY_26.07/fire_images", "FD_READY_26.07/fire_masks", batch_size, True)
+    train_loader = dl.get_data_loader()
+    images, masks = iter(train_loader).__next__()
+    images = images.to(device)
+
+
+
+    model = VAE(device, conditionalVAE=False)
+    model.load_encoder_decoder(vae_path)
+    images, mu, log_var = model.encode_decode(images)
+    z1 =  create_example_input(batch_size,BASIC_VAE,device)
+    z_images = model.generate(z1)
+    z2 = get_latent_vector(mu, log_var)
+    z2_images = model.generate(z2)
+
+    print(mu.size())
+    mu1 = mu[0].repeat(batch_size,1)
+    log_var1 = log_var[3].repeat(batch_size,1)
+    z3 = get_latent_vector(mu1,log_var1)
+    z3_images =model.generate(z3)
+
+
+    print(mu1.size())
+
+    save_image_batch("test_vae", "1.png", images)
+    save_image_batch("test_vae", "4.png", z_images)
+    save_image_batch("test_vae", "2.png", z2_images)
+    save_image_batch("test_vae", "3.png", z3_images)
 
 
 
 
-test_conditional_gan("gen13.pth",32)
+def test_cond_vae(cond_vae_path, batch_size):
+    device = "cuda"
+    dl = DataLoader("FD_READY_26.07/fire_images", "FD_READY_26.07/fire_masks", batch_size, True)
+    train_loader = dl.get_data_loader()
+    images, masks = iter(train_loader).__next__()
+    masks = masks.to(device)
+    images = images.to(device)
+    z = create_latent_vector(batch_size, CVAE_Z).to(device)
+    triangle_masks = create_triangle_masks(batch_size).to(device)
+
+    model = VAE(device,conditionalVAE=True)
+    model.load_encoder_decoder(cond_vae_path)
+    ed_images, mu, logvar = model.encode_decode((images,masks))
+    z_images = model.generate((z,masks))
+    z2_images = model.generate((z,triangle_masks))
+
+    images = torch.cat((images, z_images),1)
+    save_image_batch("test_cvae", "1.png", images)
+    save_image_batch("test_cvae", "2.png", z_images)
+    save_image_batch("test_cvae", "3.png", z2_images)
+    save_image_batch("test_cvae", "ed.png", ed_images)
+
+    save_masks("test_cvae", "4.png", masks)
+    save_masks("test_cvae", "5.png", triangle_masks)
 
 
+#test_conditional_gan("gen13.pth",32)
+#test_vae("vae17.pth",32)
+
+test_cond_vae("vae27.pth", 32)

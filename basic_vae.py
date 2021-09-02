@@ -60,7 +60,7 @@ class VAEEncoderDecoder(nn.Module):# one convolutional layer one fully_connected
         decoded = self.decoder(z)
         return decoded
 
-    def get_latent_vector(self,mu,log_var):#reparametrization trick
+    def get_latent_vector(self, mu ,log_var):#reparametrization trick
         std = exp(0.5*log_var)
         eps = rand_like(std)
         return eps *std + mu

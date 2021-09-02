@@ -7,33 +7,56 @@ if torch.cuda.is_available():
     device = torch.device('cuda')
 """
 possible models
-
+prin
 
 testy zrobione na ADAMW to tak naprawdę ADAM
 """
+print(device)
 def train_GAN():
-    ta = TrainModels(device,"CGAN_23.08_BCE_ADAMW_beta", model_type="CGAN")
+    ta = TrainModels(device,"DELEET", model_type="GAN")
     ta.set_loss_criterion("BCE")
-    ta.set_batch_size(16)
+    ta.set_batch_size(64)
     ta.set_net_optimizer("generator",ADAMW, lr=0.01, momentum=0.5)
     ta.set_net_optimizer("discriminator",ADAMW, lr=0.01, momentum=0.5)
 
     ta.train_loop(100)
 
-train_GAN()
 
 
-ta = TrainModels(device,"CVAE_22.08_ADAMW", model_type="VAE")
-ta.set_loss_criterion("BCE")
-ta.set_batch_size(16)
-ta.set_net_optimizer("VAE", ADAMW, lr=0.01, momentum=0.5)
+def train_CGAN():
+    ta = TrainModels(device,"DELEETC2", model_type="CGAN")
+    ta.set_loss_criterion("BCE")
+    ta.set_batch_size(64)
+    ta.set_net_optimizer("generator",ADAMW, lr=0.01, momentum=0.5)
+    ta.set_net_optimizer("discriminator",ADAMW, lr=0.01, momentum=0.5)
+
+    ta.train_loop(100)
+
+#train_CGAN()
+def train_VAE():
+    ta = TrainModels(device,"VAE_DELETE", model_type="VAE")
+    ta.set_loss_criterion("BCE")
+    ta.set_batch_size(16)
+    ta.set_net_optimizer("VAE", ADAMW, lr=0.001, momentum=0.5)
 
 
-#ta.train_loop(100)
+    ta.train_loop(100)
+
+train_VAE()
+
+
+def train_CVAE():
+    ta = TrainModels(device,"CVAE_DELETE", model_type="CVAE")
+    ta.set_loss_criterion("MSE")
+    ta.set_batch_size(64)
+    ta.set_net_optimizer("VAE", ADAMW, lr=0.002, momentum=0.9)
+
+
+    ta.train_loop(100)
 
 
 
-
+train_CVAE()
 """
     def choose_gen_dis_optimizer(self):
         beta1 = 0.5

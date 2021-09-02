@@ -80,6 +80,8 @@ class CondVAEEncoderDecoder(nn.Module):# one convolutional layer one fully_conne
         return reconstruction_loss + KLD
 
 
+
+
     def forward(self,image, mask):
         mu,log_var = self.encode(image,mask)
         z = self.get_latent_vector(mu,log_var)

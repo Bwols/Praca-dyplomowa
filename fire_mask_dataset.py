@@ -30,6 +30,8 @@ class FireMaskDataset(Dataset):
              transforms.Normalize((0,), (1,))  # zakres 0, 1
              ])
 
+
+
         if mask_dir == None:
             self.add_mask = False
             print("No mask dataset")
