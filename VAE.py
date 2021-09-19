@@ -7,6 +7,7 @@ from cond_vae import CondVAEEncoderDecoder
 from basic_vae import VAEEncoderDecoder
 
 import torch
+from constants import  create_latent_vector
 
 
 class VAE:
@@ -57,13 +58,41 @@ class VAE:
 
     def train_basic(self, data):
         self.optimizer.zero_grad()
+
         real_images = data.to(self.device)
+
         fake_images, mu, log_var = self.encoder_decoder(real_images)
         reconstruction_loss = self.loss_criterion(fake_images, real_images)
         loss = self.encoder_decoder.final_loss(reconstruction_loss, mu, log_var)
 
         loss.backward()
 
+        self.optimizer.step()
+
+        return loss
+
+    def train_basic2(self, data):
+        self.optimizer.zero_grad()
+
+        real_images = data.to(self.device)
+        fake_images, mu, log_var = self.encoder_decoder(real_images)
+
+        z = create_latent_vector(real_images.shape[0], (100, 1, 1)).to(self.device)
+        fake_images2 = self.generate(z)
+
+        loss_criterion2 = torch.nn.BCELoss(reduction="sum")
+        loss2 = loss_criterion2(fake_images2, real_images)
+
+
+        reconstruction_loss = self.loss_criterion(fake_images, real_images)
+        loss = self.encoder_decoder.final_loss(reconstruction_loss +loss2, mu, log_var)
+
+        #loss.backward()
+
+
+
+
+        loss.backward()
         self.optimizer.step()
 
         return loss

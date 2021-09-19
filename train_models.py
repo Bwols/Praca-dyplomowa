@@ -1,4 +1,4 @@
-from generative_adversarial_nets import GAN
+from GAN import GAN
 from VAE import VAE
 #from cond_vae import CondVAE
 
@@ -88,13 +88,13 @@ class TrainModels:
         elif self.model_type == CVAE:
             self.model = VAE(device=self.device, conditionalVAE=True)
 
-    def set_loss_criterion(self, loss_function_name):
+    def set_loss_criterion(self, loss_function_name, reduction='mean'):
 
         self.loss_function_name = loss_function_name
         if loss_function_name == L1:
-            self.loss_criterion = torch.nn.L1Loss()
+            self.loss_criterion = torch.nn.L1Loss(reduction=reduction)
         elif loss_function_name ==  MSE:
-            self.loss_criterion = torch.nn.MSELoss()
+            self.loss_criterion = torch.nn.MSELoss(reduction=reduction)
         elif loss_function_name == NEGATIVE_LOG_LIKELIHOOD:
             self.loss_criterion = torch.nn.NLLLoss()
         elif loss_function_name == CROSS_ENTROPY_LOSS:
@@ -102,7 +102,7 @@ class TrainModels:
         elif loss_function_name == KLD:
             self.loss_criterion = torch.nn.KLDivLoss()
         elif loss_function_name == BCE:
-            self.loss_criterion = torch.nn.BCELoss(reduction='sum') # TODO
+            self.loss_criterion = torch.nn.BCELoss(reduction=reduction) # TODO
             #self.loss_criterion = torch.nn.BCELoss()  # TODO
         elif loss_function_name == HINGE_EMBEDDING_LOSS:
             self.loss_criterion = torch.nn.HingeEmbeddingLoss()
@@ -137,10 +137,13 @@ class TrainModels:
         elif optimizer_name == SGD:
             optimizer = torch.optim.SGD(parameters, lr=lr, momentum=momentum)
 
+
+
         if net_name == GENERATOR:
             self.generator_optimizer = optimizer
             self.model.set_generator_optimizer(optimizer)
         elif net_name == DISCRIMINATOR:
+
             self.discriminator_optimizer = optimizer
             self.model.set_discriminator_optimizer(optimizer)
         elif net_name == VAE_NET:
@@ -231,6 +234,7 @@ class TrainModels:
 
             else:
                 self.vae_epoch_loss += model_batch_loss.cpu().detach()
+                #self.vae_epoch_loss +=1
 
         def append_epoch_loss(self):
 
@@ -291,7 +295,7 @@ class TrainModels:
 
         self.real_labels = torch.ones(self.batch_size, 1, 1, 1).to(self.device)
         self.fake_labels = torch.zeros(self.batch_size, 1, 1, 1).to(self.device)
-        example_input = create_example_input(64, self.model_type, self.device)
+        example_input = create_example_input(64, self.model_type, self.device) #TODO <<<tutaj obrazy ilość
 
 
 
@@ -303,7 +307,7 @@ class TrainModels:
             img_data = None
             epoch_start = time.time()
             for i, data in enumerate(self.train_loader):
-                model_batch_loss = self.train_model(data) #TODO wziąc to do środak klasy żeby dla gana też działało
+                model_batch_loss = self.train_model(data)
 
                 measure_log_train.add_batch_loss(model_batch_loss)
                 img_data = data

@@ -1,7 +1,7 @@
 from tensorflow.keras.applications.inception_v3 import InceptionV3
 from tensorflow.keras.applications.inception_v3 import preprocess_input
 import numpy as np
-#from test_eval_model import  get_real_images
+
 import cv2 as cv
 import glob
 import time
@@ -54,14 +54,16 @@ def inception_score_on_dataset(images, no_batches):
         print("{}% ".format(int((i+1) /no_batches *100)))
     print("scores:", scores)
     IS_avg, IS_std = np.mean(scores), np.std(scores)
+
     return IS_avg, IS_std
 
 
 
 
 
-images = read_images("IS_GAN5000")# (1.8565556, 0.06115279) gen2
+#images = read_images("IS_GAN5000")# (1.8565556, 0.06115279) gen2
 #images = read_images("FD_READY_26.07\\fire_images/")#(3.3051689, 0.24302116)
+images = read_images("EKSPERYMENTY_INCEPTION_SCORE/CVAE_3300")#(3.3051689, 0.24302116)
 images = preprocess_images(images)
 
 
@@ -72,6 +74,12 @@ print("images size:", images.shape[:])
 a = time.time()
 score = inception_score_on_dataset(images,10)
 print(score)
+IS_avg, IS_std = score
+
+print(round(IS_avg, 2),round(IS_std,2))
 b = time.time()
 print(int(b-a),"s")
+
+
+
 

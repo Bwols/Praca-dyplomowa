@@ -20,14 +20,28 @@ class FireMaskDataset(Dataset):
         self.images = []
         self.masks = []
 
-        transform = transforms.Compose(
-            [transforms.ToTensor(),
-             transforms.Normalize((0.5,), (0.5,)) # zakres -1,1
-             ])
-
+        """
         transform = transforms.Compose(
             [transforms.ToTensor(),
              transforms.Normalize((0,), (1,))  # zakres 0, 1
+             ])
+             
+             
+             
+             transform = transforms.Compose(
+            [transforms.ToTensor(),
+             transforms.Normalize((0.5,), (0.5,))  # zakres -1,1 #for gan
+             ])
+        """
+        transform = transforms.Compose(
+            [transforms.ToTensor(),
+             transforms.Normalize((0,), (1,))  # zakres 0,1 for cvae
+             ])
+
+
+        mask_transform = transforms.Compose(
+            [transforms.ToTensor(),
+             transforms.Normalize((0,), (1,))  # zakres -1,1
              ])
 
 
@@ -40,6 +54,7 @@ class FireMaskDataset(Dataset):
             print("White_mask_dataset")
 
         for image_name in os.listdir(image_dir):
+
             image_path = get_full_path(image_dir, image_name)
             image = cv.imread(image_path)
             image = cv.cvtColor(image, cv.COLOR_BGR2RGB)
@@ -54,13 +69,14 @@ class FireMaskDataset(Dataset):
 
                 mask = cv.cvtColor(mask, cv.cv2.COLOR_BGR2GRAY)
 
-                mask = transform(mask)
+                mask = mask_transform(mask)
 
                 self.masks.append(mask)
 
 
         self.len = len(self.images)
-        print("Loaded {} images of fire \n".format(self.len))
+        print("Loaded {} images of fire ".format(self.len))
+        print("Loaded {} masks \n".format(len(self.masks)))
 
     def __len__(self):
         return self.len
@@ -94,4 +110,6 @@ class DataLoader:
 
 #dl = DataLoader("FD_READY_ALPHA/fire_images", "FD_READY_ALPHA/fire_masks")
 #train_loader = dl.get_data_loadet()
+
+
 

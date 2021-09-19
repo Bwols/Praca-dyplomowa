@@ -15,7 +15,7 @@ CVAE = "CVAE"
 VANILLA_GAN_Z = (100, 1, 1)
 CGAN_Z = (1, 8, 8)
 CVAE_Z = [100]
-
+CGAN_Z =[100]
 
 #LOSS FUNCTIONS
 L1 = "L1"
@@ -50,25 +50,27 @@ def create_labels(batch_size, device):
     return real_labels, fake_labels
 
 def create_latent_vector(batch_size, latant_dim):  # number tuple
-    return torch.randn(batch_size,*latant_dim)
+    #return torch.randn(batch_size,*latant_dim)
+    return torch.normal(0, 0.5, size=(batch_size, *latant_dim))
+
 
 
 def make_dir(dir_name):
     if not os.path.exists(dir_name):
         os.mkdir(dir_name)
 
-def save_image_batch(output_folder,name,images,nrow = 4):
+def save_image_batch(output_folder,name,images,nrow = 8,padding =0):
 
     images = images.view(-1,3,64,64)
     make_dir(output_folder)
     images_path = os.path.join(output_folder,'{}.jpg'.format(name))
-    torchvision.utils.save_image(images,images_path,nrow=nrow,padding=0,pad_value=0)
+    torchvision.utils.save_image(images,images_path,nrow=nrow,padding=padding,pad_value=1)
 
-def save_masks(output_folder,name,images):
+def save_masks(output_folder,name,images, nrow=8):
     images = images.view(-1, 1, 64, 64)
     make_dir(output_folder)
     images_path = os.path.join(output_folder, '{}.jpg'.format(name))
-    torchvision.utils.save_image(images, images_path, nrow=8, padding=0, pad_value=0)
+    torchvision.utils.save_image(images, images_path, nrow=nrow, padding=0, pad_value=0)
 
 
 def save_image_batch_separate(output_folder, name,images):
@@ -106,7 +108,7 @@ def create_white_mask_tensor(image):
     image = np.array(image)
     image = np.transpose(image, (0, 2, 3, 1))
 
-    white_mask = np.where(((image[:, :, :, 0] <= 0) & (image[:, :, :, 1] <= 0) & (image[:, :, :, 2] <= 0)), 0, 1)
+    white_mask = np.where(((image[:, :, :, 0] <= 0.1) & (image[:, :, :, 1] <= 0.1) & (image[:, :, :, 2] <= 0.1)), -1, 1)
 
     white_mask = torch.tensor(white_mask)
     white_mask = white_mask.reshape(-1, 1, 64, 64)

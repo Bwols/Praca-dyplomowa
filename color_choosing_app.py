@@ -168,6 +168,8 @@ class ColorChoosingApp:
         cv.moveWindow('palette_mask',0,  self.image.shape[0]+margin)
         cv.moveWindow('grabcut', self.image.shape[1], self.image.shape[0] + margin)
 
+        
+
 
         # assigining controller
         cv.setMouseCallback('input',self.mouse_action)

@@ -1,4 +1,4 @@
-from generative_adversarial_nets import GAN
+from GAN import GAN
 from VAE import VAE
 from constants import create_example_input, save_image_batch , CGAN_Z, create_latent_vector
 from fire_mask_dataset import DataLoader
@@ -34,7 +34,7 @@ def create_white_mask_tensor(image):
     image = np.array(image)
     image = np.transpose(image,(0,2,3,1))
 
-    white_mask = np.where(((image[:,:, :, 0] <= 0) & (image[:,:, :, 1] <= 0) & (image[:,:, :, 2] <= 0)), 0, 1)
+    white_mask = np.where(((image[:,:, :, 0] <= 1) & (image[:,:, :, 1] <= 1) & (image[:,:, :, 2] <= 1)), -1, 1)
 
     white_mask = torch.tensor(white_mask)
     white_mask = white_mask.reshape(-1,1,64,64)
@@ -148,7 +148,7 @@ def test_conditional_gan(generator_path, batch_size):
     save_image_batch("test_cond", "1.png", new_images)
     save_image_batch("test_cond", "4.png", new_triangle_images)
 
-
+test_conditional_gan("chosen_generators_vanilla/gen35_cond.pth",32)
 
 def test_vae(vae_path, batch_size):
 
@@ -219,4 +219,4 @@ def test_cond_vae(cond_vae_path, batch_size):
 #test_conditional_gan("gen13.pth",32)
 #test_vae("vae17.pth",32)
 
-test_cond_vae("vae27.pth", 32)
+#test_cond_vae("vae27.pth", 32)

@@ -9,8 +9,18 @@ class VAEEncoderDecoder(nn.Module):# one convolutional layer one fully_connected
 
     def __init__(self):
         super(VAEEncoderDecoder,self).__init__()
+        self.encoder = None
+        self.decoder = None
+        self.drop_p = 0.0
+        self.load_encoder_decoder_1()
 
 
+        self.fc_log_var = nn.Linear(256,100)
+        self.fc_mu = nn.Linear(256,100)
+
+
+
+    def load_encoder_decoder_1(self):
         self.encoder = nn.Sequential(
             nn.Conv2d(NC, 32, 3, 2, 1, bias=False),
             nn.BatchNorm2d(32),
@@ -21,16 +31,15 @@ class VAEEncoderDecoder(nn.Module):# one convolutional layer one fully_connected
             nn.LeakyReLU(0.2, inplace=True),
         )
 
-        self.fc_log_var = nn.Linear(256,100)
-        self.fc_mu = nn.Linear(256,100)
-
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(100, 64, 6, 2, 1, bias=False),
             nn.BatchNorm2d(64),
             nn.LeakyReLU(0.2, inplace=True),
+
             nn.ConvTranspose2d(64, 32, 4, 3, 1, bias=False),
             nn.BatchNorm2d(32),
             nn.LeakyReLU(0.2, inplace=True),
+
             nn.ConvTranspose2d(32, 16, 4, 3, 1, bias=False),
             nn.BatchNorm2d(16),
             nn.LeakyReLU(0.2, inplace=True),
@@ -38,10 +47,44 @@ class VAEEncoderDecoder(nn.Module):# one convolutional layer one fully_connected
             nn.ConvTranspose2d(16, 3, 4, 2, 1, bias=False),
             nn.BatchNorm2d(3),
             nn.Sigmoid()
-
+            #nn.Tanh()
 
         )
 
+    def load_encoder_decoder_2(self):
+        self.encoder = nn.Sequential(
+            nn.Conv2d(NC, 32, 3, 2, 1, bias=False),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Dropout(self.drop_p),
+            nn.Conv2d(32, 1, 3, 2, 1, bias=False),
+            nn.BatchNorm2d(1),
+            nn.LeakyReLU(0.2, inplace=True),
+        )
+
+        self.decoder = nn.Sequential(
+            nn.ConvTranspose2d(100, 64, 6, 2, 1, bias=False),
+            nn.BatchNorm2d(64),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Dropout(self.drop_p),
+            nn.ConvTranspose2d(64, 32, 4, 3, 1, bias=False),
+            nn.BatchNorm2d(32),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Dropout(self.drop_p),
+            nn.ConvTranspose2d(32, 16, 4, 3, 1, bias=False),
+            nn.BatchNorm2d(16),
+            nn.LeakyReLU(0.2, inplace=True),
+
+            nn.Dropout(self.drop_p),
+            nn.ConvTranspose2d(16, 3, 4, 2, 1, bias=False),
+            nn.BatchNorm2d(3),
+            nn.Sigmoid()
+
+
+        )
 
 
     def encode(self,image):
@@ -55,7 +98,7 @@ class VAEEncoderDecoder(nn.Module):# one convolutional layer one fully_connected
         log_var = self.fc_log_var(encoded)
         return (mu,log_var)
 
-    def decode(self,z):
+    def decode(self, z):
         z = z.view(-1, 100, 1, 1)
         decoded = self.decoder(z)
         return decoded
@@ -65,9 +108,10 @@ class VAEEncoderDecoder(nn.Module):# one convolutional layer one fully_connected
         eps = rand_like(std)
         return eps *std + mu
 
-    def final_loss(self,reconstruction_loss, mu, log_var):
+    def final_loss(self, reconstruction_loss, mu, log_var):
 
         KLD = -0.5 * sum(1 + log_var - mu ** 2 - log_var.exp())
+
 
         return reconstruction_loss + KLD
 
@@ -78,3 +122,8 @@ class VAEEncoderDecoder(nn.Module):# one convolutional layer one fully_connected
         fake_image = self.decode(z)
         return fake_image, mu, log_var
 
+
+    def get_latent_vector_from_image(self,image):
+        mu, log_var = self.encode(image)
+        z = self.get_latent_vector(mu, log_var)
+        return z
